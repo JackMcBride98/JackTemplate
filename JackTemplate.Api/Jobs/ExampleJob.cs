@@ -1,4 +1,4 @@
-﻿using JackTemplate.Api.Services;
+using JackTemplate.Api.Services;
 using TickerQ.Utilities.Base;
 using TickerQ.Utilities.Interfaces;
 

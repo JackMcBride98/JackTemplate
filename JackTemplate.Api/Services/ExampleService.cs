@@ -1,4 +1,4 @@
-﻿using JackTemplate.Api.Database;
+using JackTemplate.Api.Database;
 
 namespace JackTemplate.Api.Services;
 
