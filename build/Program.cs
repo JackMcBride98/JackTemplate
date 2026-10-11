@@ -133,12 +133,21 @@ public sealed class RenameProjectTask : FrostingTask<BuildContext>
         }
 
         var renamedApiDirectory = System.IO.Path.Combine(repoRoot, $"{normalizedName}.Api");
-        var renamedDatabaseDirectory = System.IO.Path.Combine(repoRoot, $"{normalizedName}.Database");
+        var renamedDatabaseDirectory = System.IO.Path.Combine(
+            repoRoot,
+            $"{normalizedName}.Database"
+        );
 
         if (Directory.Exists(renamedApiDirectory))
         {
-            var legacyCsproj = System.IO.Path.Combine(renamedApiDirectory, "JackTemplate.Api.csproj");
-            var newCsproj = System.IO.Path.Combine(renamedApiDirectory, $"{normalizedName}.Api.csproj");
+            var legacyCsproj = System.IO.Path.Combine(
+                renamedApiDirectory,
+                "JackTemplate.Api.csproj"
+            );
+            var newCsproj = System.IO.Path.Combine(
+                renamedApiDirectory,
+                $"{normalizedName}.Api.csproj"
+            );
             if (File.Exists(legacyCsproj) && !File.Exists(newCsproj))
             {
                 MoveWithRetry(legacyCsproj, newCsproj, "file");
@@ -147,21 +156,29 @@ public sealed class RenameProjectTask : FrostingTask<BuildContext>
 
         if (Directory.Exists(renamedDatabaseDirectory))
         {
-            var legacyCsproj = System.IO.Path.Combine(renamedDatabaseDirectory, "JackTemplate.Database.csproj");
-            var newCsproj = System.IO.Path.Combine(renamedDatabaseDirectory, $"{normalizedName}.Database.csproj");
+            var legacyCsproj = System.IO.Path.Combine(
+                renamedDatabaseDirectory,
+                "JackTemplate.Database.csproj"
+            );
+            var newCsproj = System.IO.Path.Combine(
+                renamedDatabaseDirectory,
+                $"{normalizedName}.Database.csproj"
+            );
             if (File.Exists(legacyCsproj) && !File.Exists(newCsproj))
             {
                 MoveWithRetry(legacyCsproj, newCsproj, "file");
             }
         }
 
-        var filesToUpdate = Directory.EnumerateFiles(repoRoot, "*", SearchOption.AllDirectories)
+        var filesToUpdate = Directory
+            .EnumerateFiles(repoRoot, "*", SearchOption.AllDirectories)
             .Where(path =>
                 !path.Contains(".git", StringComparison.OrdinalIgnoreCase)
                 && !path.Contains("bin", StringComparison.OrdinalIgnoreCase)
                 && !path.Contains("obj", StringComparison.OrdinalIgnoreCase)
                 && !path.Contains("node_modules", StringComparison.OrdinalIgnoreCase)
-                && !path.Contains(".vs", StringComparison.OrdinalIgnoreCase))
+                && !path.Contains(".vs", StringComparison.OrdinalIgnoreCase)
+            )
             .ToList();
 
         foreach (var filePath in filesToUpdate)
@@ -204,8 +221,10 @@ public sealed class RenameProjectTask : FrostingTask<BuildContext>
             var fileName = System.IO.Path.GetFileName(filePath);
             if (
                 fileName.StartsWith("docker-compose", StringComparison.OrdinalIgnoreCase)
-                && (extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
-                    || extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase))
+                && (
+                    extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
+                )
             )
             {
                 updatedText = updatedText.Replace(
@@ -222,7 +241,9 @@ public sealed class RenameProjectTask : FrostingTask<BuildContext>
         }
 
         context.Information($"Successfully renamed the template project to '{normalizedName}'.");
-        context.Information("Updated project folders, project references, namespaces, and usage strings across the repository.");
+        context.Information(
+            "Updated project folders, project references, namespaces, and usage strings across the repository."
+        );
     }
 
     private static void MoveWithRetry(string source, string destination, string kind)
