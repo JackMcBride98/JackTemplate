@@ -1,4 +1,4 @@
-﻿using JackTemplate.Api.Database;
+using JackTemplate.Api.Database;
 using NSubstitute.ClearExtensions;
 using Respawn;
 using Respawn.Graph;

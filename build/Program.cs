@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading;
 using Cake.Common;
 using Cake.Common.Diagnostics;
 using Cake.Common.IO;
@@ -53,6 +56,225 @@ public class BuildContext : FrostingContext
         ClientDirectoryPath = "../client";
         BackendE2ETestsProjectPath = "../BackendE2ETests/BackendE2ETests/BackendE2ETests.csproj";
         BuildersProjectPath = "../Builders/Builders.csproj";
+    }
+}
+
+[TaskName("RenameProject")]
+public sealed class RenameProjectTask : FrostingTask<BuildContext>
+{
+    public override void Run(BuildContext context)
+    {
+        var projectName = context.Arguments.GetArgument("name");
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            throw new CakeException(
+                "Project rename requires a --name argument, for example: --name=MyApp"
+            );
+        }
+
+        var normalizedName = projectName.Trim();
+        if (!Regex.IsMatch(normalizedName, "^[A-Za-z][A-Za-z0-9_-]*$"))
+        {
+            throw new CakeException(
+                "Project names must start with a letter and can only contain letters, numbers, underscores, and dashes."
+            );
+        }
+
+        var rootDirectory = new DirectoryInfo(AppContext.BaseDirectory);
+        var repoRoot = string.Empty;
+
+        while (rootDirectory != null)
+        {
+            if (
+                File.Exists(System.IO.Path.Combine(rootDirectory.FullName, "JackTemplate.slnx"))
+                && Directory.Exists(System.IO.Path.Combine(rootDirectory.FullName, "build"))
+            )
+            {
+                repoRoot = rootDirectory.FullName;
+                break;
+            }
+
+            rootDirectory = rootDirectory.Parent;
+        }
+
+        if (string.IsNullOrWhiteSpace(repoRoot))
+        {
+            throw new CakeException("Could not find the repository root for the rename task.");
+        }
+
+        var oldProjectName = "JackTemplate";
+        var dockerComposeProjectName = normalizedName.ToLowerInvariant();
+
+        var renamedDirectories = new[]
+        {
+            (
+                System.IO.Path.Combine(repoRoot, "JackTemplate.Api"),
+                System.IO.Path.Combine(repoRoot, $"{normalizedName}.Api")
+            ),
+            (
+                System.IO.Path.Combine(repoRoot, "JackTemplate.Database"),
+                System.IO.Path.Combine(repoRoot, $"{normalizedName}.Database")
+            ),
+        };
+
+        foreach (var (source, destination) in renamedDirectories)
+        {
+            if (Directory.Exists(source) && !Directory.Exists(destination))
+            {
+                MoveWithRetry(source, destination, "directory");
+            }
+        }
+
+        var solutionSource = System.IO.Path.Combine(repoRoot, "JackTemplate.slnx");
+        var solutionDestination = System.IO.Path.Combine(repoRoot, $"{normalizedName}.slnx");
+        if (File.Exists(solutionSource) && !File.Exists(solutionDestination))
+        {
+            MoveWithRetry(solutionSource, solutionDestination, "file");
+        }
+
+        var renamedApiDirectory = System.IO.Path.Combine(repoRoot, $"{normalizedName}.Api");
+        var renamedDatabaseDirectory = System.IO.Path.Combine(
+            repoRoot,
+            $"{normalizedName}.Database"
+        );
+
+        if (Directory.Exists(renamedApiDirectory))
+        {
+            var legacyCsproj = System.IO.Path.Combine(
+                renamedApiDirectory,
+                "JackTemplate.Api.csproj"
+            );
+            var newCsproj = System.IO.Path.Combine(
+                renamedApiDirectory,
+                $"{normalizedName}.Api.csproj"
+            );
+            if (File.Exists(legacyCsproj) && !File.Exists(newCsproj))
+            {
+                MoveWithRetry(legacyCsproj, newCsproj, "file");
+            }
+        }
+
+        if (Directory.Exists(renamedDatabaseDirectory))
+        {
+            var legacyCsproj = System.IO.Path.Combine(
+                renamedDatabaseDirectory,
+                "JackTemplate.Database.csproj"
+            );
+            var newCsproj = System.IO.Path.Combine(
+                renamedDatabaseDirectory,
+                $"{normalizedName}.Database.csproj"
+            );
+            if (File.Exists(legacyCsproj) && !File.Exists(newCsproj))
+            {
+                MoveWithRetry(legacyCsproj, newCsproj, "file");
+            }
+        }
+
+        var filesToUpdate = Directory
+            .EnumerateFiles(repoRoot, "*", SearchOption.AllDirectories)
+            .Where(path =>
+                !path.Contains(".git", StringComparison.OrdinalIgnoreCase)
+                && !path.Contains("bin", StringComparison.OrdinalIgnoreCase)
+                && !path.Contains("obj", StringComparison.OrdinalIgnoreCase)
+                && !path.Contains("node_modules", StringComparison.OrdinalIgnoreCase)
+                && !path.Contains(".vs", StringComparison.OrdinalIgnoreCase)
+            )
+            .ToList();
+
+        foreach (var filePath in filesToUpdate)
+        {
+            if (!File.Exists(filePath))
+            {
+                continue;
+            }
+
+            var extension = System.IO.Path.GetExtension(filePath);
+            var isTextFile =
+                string.IsNullOrEmpty(extension)
+                || extension.Equals(".cs", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".json", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".md", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".ps1", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".sh", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".sql", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".txt", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".toml", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".html", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".tsx", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".ts", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".js", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".css", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".env", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".gitignore", StringComparison.OrdinalIgnoreCase);
+
+            if (!isTextFile)
+            {
+                continue;
+            }
+
+            var originalText = File.ReadAllText(filePath);
+            var updatedText = originalText.Replace(oldProjectName, normalizedName);
+            var fileName = System.IO.Path.GetFileName(filePath);
+            if (
+                fileName.StartsWith("docker-compose", StringComparison.OrdinalIgnoreCase)
+                && (
+                    extension.Equals(".yml", StringComparison.OrdinalIgnoreCase)
+                    || extension.Equals(".yaml", StringComparison.OrdinalIgnoreCase)
+                )
+            )
+            {
+                updatedText = updatedText.Replace(
+                    "jack-template",
+                    dockerComposeProjectName,
+                    StringComparison.OrdinalIgnoreCase
+                );
+            }
+
+            if (!string.Equals(originalText, updatedText, StringComparison.Ordinal))
+            {
+                File.WriteAllText(filePath, updatedText);
+            }
+        }
+
+        context.Information($"Successfully renamed the template project to '{normalizedName}'.");
+        context.Information(
+            "Updated project folders, project references, namespaces, and usage strings across the repository."
+        );
+    }
+
+    private static void MoveWithRetry(string source, string destination, string kind)
+    {
+        var retries = 0;
+        while (true)
+        {
+            try
+            {
+                if (kind.Equals("directory", StringComparison.OrdinalIgnoreCase))
+                {
+                    Directory.Move(source, destination);
+                }
+                else
+                {
+                    File.Move(source, destination);
+                }
+
+                return;
+            }
+            catch (IOException) when (retries < 10)
+            {
+                retries++;
+                Thread.Sleep(250 * retries);
+            }
+            catch (UnauthorizedAccessException) when (retries < 10)
+            {
+                retries++;
+                Thread.Sleep(250 * retries);
+            }
+        }
     }
 }
 

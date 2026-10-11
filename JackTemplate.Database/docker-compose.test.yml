@@ -1,9 +1,9 @@
 ---
-name: jack-template-test
+name: jacktemplate-test
 services:
   db:
     image: postgres
-    container_name: jack-template-test-db
+    container_name: jacktemplate-test-db
     restart: always
     environment:
       POSTGRES_PASSWORD: mysecretpassword

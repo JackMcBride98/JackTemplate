@@ -1,4 +1,4 @@
-﻿using Bogus;
+using Bogus;
 using JackTemplate.Api.Database;
 using NodaTime;
 using NodaTime.Extensions;

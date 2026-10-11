@@ -31,6 +31,13 @@ There are no down migrations as DbUp is opinionated against them. Although they 
 `./BackendE2ETests` contains integration/end-to-end tests for the backend API. These are run against a local test database 
 and use mock the results of Spotify API. These are setup as reccomened by FastEndpoints [documentation](https://fast-endpoints.com/docs/integration-unit-testing).
 
+# Renaming this template
+Use the Cake task to rename the project from `JackTemplate` to your own app name:
+
+`./cake RenameProject --name=MyApp`
+
+This renames the top-level project folders (`JackTemplate.Api`, `JackTemplate.Database`), updates the solution file, and replaces code/configuration references from `JackTemplate` to `MyApp` across the repository. It also updates the Docker Compose project and container names to the lowercase app name (for example, `myapp`).
+
 # Running the app locally
 Ensure you have installed the necceessary deps in prerequisites. Build the solution and run `npm install` in the client folder
 
